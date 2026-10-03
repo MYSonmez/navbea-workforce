@@ -1,0 +1,51 @@
+# Dependencies
+/node_modules/
+/.pnp/
+.pnp.*
+
+# Build output and caches
+/.next/
+/out/
+/build/
+/dist/
+/.cache/
+next-env.d.ts
+*.tsbuildinfo
+
+# Environment variables and private credentials
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Test output and temporary files
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+/tmp/
+*.log
+*.pid
+*.pid.lock
+
+# Local hosting configuration
+/.vercel/
+/.netlify/
+
+# Downloaded agent skills and local agent state (keep skills-lock.json)
+/.agents/skills/
+/.codex/
+/.claude/skills/
+/.claude/settings.local.json
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+/.idea/
+*.swp
+*.swo
+*~
