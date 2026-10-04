@@ -130,7 +130,6 @@ Açık yan menü, lacivert tipografi, yeşil seçili sekmeler ve saha eylemleri,
 Mobil yönetici özetinde müdahale bekleyen engel önceliklidir; harita Saha sekmesinden açılır.
 Açık ve koyu tema değişkenleri `src/app/workforce.css` içinde ortak görsel dile uyarlanır ve Tailwind tema tokenlarına bağlanır.
 Ortak görsel kurallar `src/app/workforce.css`, giriş ve hazırlık stilleri `src/app/operations.css`, logo ve son düzenlemeler `src/app/refinements.css`, tasarım kararları [docs/design-system.md](docs/design-system.md) içindedir.
-Üretilen görsellerin kullanım ve üretim bilgileri [docs/assets.md](docs/assets.md) içindedir.
 Yerel sistem fontları ve yerel fotoğraf dosyaları kullanılır. Google Maps internet erişimi gerektirir.
 Saha görünümü Google Maps uydu görüntüsünü kullanır. Örnek A/B/C bloklarına tıklamak haritayı ilgili konuma merkezler; görev bağlantısı ayrıntıları açar. Ayrıntılar [docs/google-maps.md](docs/google-maps.md) içindedir.
 Navbea SVG logosu açık ve koyu tema renklerine uyarlanmıştır; kaynak bilgisi [docs/brand.md](docs/brand.md) içindedir.

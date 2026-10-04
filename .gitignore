@@ -9,6 +9,11 @@
 /build/
 /dist/
 /.cache/
+/.turbo/
+/.npm/
+/.pnpm-store/
+.eslintcache
+.stylelintcache
 next-env.d.ts
 *.tsbuildinfo
 
@@ -28,6 +33,10 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /tmp/
+/temp/
+*.tmp
+*.temp
+*.bak
 *.log
 *.pid
 *.pid.lock
@@ -36,11 +45,26 @@ next-env.d.ts
 /.vercel/
 /.netlify/
 
-# Downloaded agent skills and local agent state (keep skills-lock.json)
-/.agents/skills/
+# Local AI tools, instructions, skills and state
+/.agents/
 /.codex/
-/.claude/skills/
-/.claude/settings.local.json
+/.claude/
+/.cursor/
+/.windsurf/
+/.gemini/
+/.aider*
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+/skills-lock.json
+/.cursorrules
+/.cursorignore
+/.windsurfrules
+/.github/copilot-instructions.md
+
+# Local design previews and image-generation notes
+/docs/*.png
+/docs/assets.md
 
 # OS and editor files
 .DS_Store
