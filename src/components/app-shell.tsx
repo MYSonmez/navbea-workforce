@@ -6,6 +6,10 @@ import { navigation, person, roleInfo, rolePath } from "@/lib/demo-data";
 import { useDemo } from "@/lib/demo-store";
 import type { Role, Section } from "@/lib/types";
 import { Avatar, Icon } from "./ui";
+import { BrandMark } from "./brand";
+import { useSession } from "@/lib/session";
+import { SiteSwitcher } from "./site-switcher";
+import { useSite } from "@/lib/sites";
 
 export function AppShell({
   role,
@@ -17,8 +21,10 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { user: signedInUser, logout } = useSession();
   const { state } = useDemo();
-  const user = person(roleInfo[role].userId);
+  const { site } = useSite();
+  const user = signedInUser || person(roleInfo[role].userId);
   const nav = navigation[role];
   const reviews = state.tasks.filter((t) => t.status === "review").length;
   const unread = state.activities.filter((a) => !state.readNotifications.includes(a.id)).length;
@@ -35,33 +41,33 @@ export function AppShell({
     }
   }
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-role={role}>
       <a className="skip-link" href="#main-content">
         İçeriğe geç
       </a>
       <aside className="sidebar">
         <Link href={rolePath(role)} className="brand" aria-label="Navbea Workforce ana sayfa">
-          <span className="brand-mark">
-            n<span />
-          </span>
+          <BrandMark />
           <div>
-            <strong>
-              navbea<span className="brand-dot">.</span>
-            </strong>
+            <strong>Navbea</strong>
             <small>WORKFORCE</small>
           </div>
         </Link>
-        <div className="project-switch">
-          <span className="project-icon">
-            <Icon name="helmet" />
-          </span>
-          <div>
-            <strong>Merkez Şantiye</strong>
-            <small>İstanbul · Aktif proje</small>
+        {role === "yonetici" ? (
+          <SiteSwitcher />
+        ) : (
+          <div className="project-switch">
+            <span className="project-icon">
+              <Icon name="helmet" />
+            </span>
+            <div>
+              <strong>{site.name}</strong>
+              <small>İstanbul · Aktif proje</small>
+            </div>
+            <span className="live-dot" />
           </div>
-          <span className="live-dot" />
-        </div>
-        <div className="nav-label">ÇALIŞMA ALANI</div>
+        )}
+        <div className="nav-label">{roleInfo[role].label.toLocaleUpperCase("tr-TR")} PANELİ</div>
         <nav aria-label="Ana menü">
           {nav.map((item) => (
             <Link
@@ -79,10 +85,6 @@ export function AppShell({
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-demo">
-            <span className="live-dot" />
-            Örnek şantiye · 30 Eylül 2026
-          </div>
           <Link
             href={rolePath(role, "profil")}
             className={`nav-item ${section === "profil" ? "is-active" : ""}`}
@@ -103,31 +105,26 @@ export function AppShell({
       <div className="main-shell">
         <header className="topbar">
           <div className="breadcrumbs">
-            <span>Çalışma alanı</span>
+            <span>{roleInfo[role].label}</span>
             <Icon name="right" size={14} />
             <strong>{title}</strong>
           </div>
           <Link className="mobile-brand" href={rolePath(role)}>
-            navbea<span>.</span>
+            <BrandMark /> Navbea
           </Link>
           <div className="topbar-actions">
-            <span className="demo-label">
-              <span />
-              Demo alanı
-            </span>
-            <label className="role-switch">
-              <Icon name="users" size={16} />
-              <span className="sr-only">Görüntülenen rol</span>
-              <select
-                aria-label="Rol değiştir"
-                value={role}
-                onChange={(event) => router.push(rolePath(event.target.value as Role))}
-              >
-                <option value="yonetici">Yönetici</option>
-                <option value="formen">Formen</option>
-                <option value="isci">İşçi</option>
-              </select>
-            </label>
+            {role === "yonetici" && <SiteSwitcher mobile />}
+            <button
+              className="session-exit"
+              aria-label="Çıkış yap"
+              onClick={() => {
+                logout();
+                router.replace("/giris");
+              }}
+            >
+              <Icon name="logout" size={17} />
+              <span>Çıkış yap</span>
+            </button>
             <button
               className="icon-button theme-toggle"
               onClick={toggleTheme}

@@ -21,6 +21,7 @@ import {
   Download,
   HardHat,
   LayoutDashboard,
+  LogOut,
   MapPin,
   Moon,
   MoreHorizontal,
@@ -73,6 +74,7 @@ const icons: Record<string, LucideIcon> = {
   trend: TrendingUp,
   download: Download,
   close: X,
+  logout: LogOut,
 };
 export function Icon({
   name,
@@ -122,7 +124,7 @@ export function Empty({
   icon = "tasks",
 }: {
   title: string;
-  text: string;
+  text?: string;
   icon?: string;
 }) {
   return (
@@ -131,7 +133,7 @@ export function Empty({
         <Icon name={icon} size={28} />
       </span>
       <h3>{title}</h3>
-      <p>{text}</p>
+      {text && <p>{text}</p>}
     </div>
   );
 }

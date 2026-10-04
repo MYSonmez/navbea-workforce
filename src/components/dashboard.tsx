@@ -1,13 +1,16 @@
 "use client";
+import { Select } from "./select";
 import Link from "next/link";
 import { useState } from "react";
-import { formatNumber, person, roleInfo, rolePath } from "@/lib/demo-data";
+import { formatNumber, person, rolePath } from "@/lib/demo-data";
 import { useDemo } from "@/lib/demo-store";
 import type { Role, Task } from "@/lib/types";
 import { Avatar, Badge, Empty, Icon, PanelHeading, Progress } from "./ui";
 import { SiteMap } from "./site-map";
 import { TaskList } from "./task-list";
 import { Tabs } from "./pagination";
+import { TaskWorkflow } from "./workflow";
+import { useSite } from "@/lib/sites";
 
 export function PageHeading({
   title,
@@ -46,6 +49,7 @@ export function Dashboard({
 }) {
   const [tab, setTab] = useState<"overview" | "tasks" | "site">("overview");
   const { state } = useDemo();
+  const { site } = useSite();
   const issues = state.issues.filter((i) => !i.resolved && tasks.some((t) => t.id === i.taskId));
   const workers = new Set(tasks.flatMap((t) => t.workerIds)).size;
   const progress = tasks.length
@@ -57,40 +61,47 @@ export function Dashboard({
   return (
     <>
       <PageHeading
-        title={roleInfo[role].label}
-        description="30 Eylül 2026 · Çarşamba"
+        title={role === "formen" ? "Görev özeti" : "Genel bakış"}
         action={
           role === "yonetici" ? (
-            <button className="btn btn-primary" onClick={onCreate}>
+            <button
+              className="btn btn-primary"
+              onClick={onCreate}
+              disabled={!site.teamIds.length}
+              title={!site.teamIds.length ? "Bu şantiyede ekip tanımlanmadı." : undefined}
+            >
               <Icon name="plus" size={17} />
               Yeni görev
             </button>
-          ) : (
-            <span className="user-greeting">Ahmet Yılmaz</span>
-          )
+          ) : null
         }
       />
-      <div className="project-strip">
-        <span className="project-icon">
-          <Icon name="building" size={17} />
-        </span>
-        <strong>Merkez Şantiye</strong>
-        <span className="project-address">Ataşehir, İstanbul</span>
-        <span className="outline-chip">{role === "yonetici" ? "3 blok" : "İnce işler"}</span>
-      </div>
       {role === "yonetici" && (
-        <div className="stats-grid">
+        <div className="stats-grid manager-stats">
           {[
-            { icon: "helmet", label: "Çalışan", value: String(workers), color: "blue" },
+            {
+              icon: "helmet",
+              label: "Çalışan",
+              value: String(workers),
+              color: "blue",
+              note: "Görevlere atanan",
+            },
             {
               icon: "tasks",
               label: "Aktif görev",
               value: String(tasks.filter((t) => t.status === "active").length),
-              color: "blue",
+              color: "teal",
+              note: "Sahada devam eden",
             },
-            { icon: "warning", label: "Açık engel", value: String(issues.length), color: "orange" },
+            {
+              icon: "warning",
+              label: "Açık engel",
+              value: String(issues.length),
+              color: "orange",
+              note: "Takip bekleyen",
+            },
           ].map((stat) => (
-            <article className="stat-card" key={stat.label}>
+            <article className={`stat-card stat-${stat.color}`} key={stat.label}>
               <span className={`stat-icon tone-${stat.color}`}>
                 <Icon name={stat.icon} size={21} />
               </span>
@@ -120,9 +131,8 @@ export function Dashboard({
         )}
         {tab === "site" && (
           <section className="panel fill-panel map-full">
-            <PanelHeading title="Şantiye haritası" caption="Görev atamalarına göre bölgeler" />
+            <PanelHeading title="Şantiye haritası" />
             <SiteMap tasks={tasks} onSelect={onSelect} />
-            <div className="panel-note">Şematik saha planı · Canlı konum verisi içermez</div>
           </section>
         )}
         {tab === "overview" &&
@@ -136,15 +146,27 @@ export function Dashboard({
           ) : (
             <div className="manager-overview">
               <section className="panel overview-progress">
-                <PanelHeading
-                  title="Ortalama görev ilerlemesi"
-                  action={<strong className="progress-number">%{progress}</strong>}
-                />
+                <div
+                  className="progress-orbit"
+                  style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}
+                >
+                  <span>
+                    <strong>%{progress}</strong>
+                    <small>İlerleme</small>
+                  </span>
+                </div>
+                <div className="progress-heading">
+                  <div>
+                    <span className="eyebrow">SAHA DURUMU</span>
+                    <h2>Ortalama görev ilerlemesi</h2>
+                  </div>
+                  <strong className="progress-number">%{progress}</strong>
+                </div>
                 <Progress value={progress} />
                 <div className="progress-legend">
                   <span>
                     <i />
-                    {tasks.filter((t) => t.status === "completed").length} tamamlanan
+                    {tasks.filter((t) => t.status === "completed").length} gün onaylandı
                   </span>
                   <span>
                     <i />
@@ -167,6 +189,17 @@ export function Dashboard({
                   }
                 />
                 <SiteMap tasks={tasks} onSelect={onSelect} />
+                <div className="map-footer">
+                  <span>
+                    <Icon name="building" size={14} />
+                    {site.id === "merkez" ? "3 blok" : "Örnek proje"}
+                  </span>
+                  <span>
+                    <Icon name="helmet" size={14} />
+                    {workers} çalışan
+                  </span>
+                  <span>{site.name}</span>
+                </div>
               </section>
               <section className="panel overview-tasks fill-panel">
                 <PanelHeading
@@ -182,7 +215,7 @@ export function Dashboard({
               </section>
               <section className="panel overview-issue">
                 <PanelHeading
-                  title="Saha bildirimleri"
+                  title="Müdahale bekleyen"
                   action={<span className="count-chip">{issues.length} açık</span>}
                 />
                 {issues[0] ? (
@@ -230,27 +263,37 @@ function ForemanOverview({
 }) {
   const [selectedId, setSelectedId] = useState(tasks[0]?.id || "");
   const task = tasks.find((t) => t.id === selectedId) || tasks[0];
+  const pendingPreparation = tasks.find((t) => t.status === "planned");
   const canRecord = task?.status === "active" || task?.status === "blocked";
   if (!task)
     return (
       <section className="panel">
-        <Empty title="Atanan görev yok" text="Yeni görevler bu alanda görünecek." />
+        <Empty title="Atanan görev yok" />
       </section>
     );
   return (
     <div className="foreman-overview">
       <section className="panel current-task-panel">
+        <div className="assignment-kicker">
+          <span className="live-dot" /> GÜNCEL GÖREV
+        </div>
         <div className="task-picker">
           <label htmlFor="current-task">Görev</label>
-          <select id="current-task" value={task.id} onChange={(e) => setSelectedId(e.target.value)}>
+          <Select
+            aria-label="Görev"
+            id="current-task"
+            value={task.id}
+            onChange={(e) => setSelectedId(e.target.value)}
+          >
             {tasks.map((t) => (
               <option value={t.id} key={t.id}>
                 {t.title}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <TaskSummary task={task} />
+        <TaskWorkflow task={task} />
         <div className="task-summary-progress">
           <Progress value={(task.actual / task.target) * 100} />
           <strong>%{Math.round((task.actual / task.target) * 100)}</strong>
@@ -276,23 +319,43 @@ function ForemanOverview({
           </button>
         </div>
       </section>
-      <section className="panel foreman-crew">
-        <PanelHeading
-          title="Atanan ekip"
-          action={<span className="count-chip">{task.workerIds.length} çalışan</span>}
-        />
-        <div className="crew-inline">
-          {task.workerIds.slice(0, 4).map((id) => (
-            <div key={id}>
-              <Avatar user={person(id)} />
-              <strong>{person(id).name.split(" ")[0]}</strong>
-              <small>{person(id).trade}</small>
-            </div>
-          ))}
-        </div>
-      </section>
+      {pendingPreparation ? (
+        <section className="panel foreman-crew preparation-queue">
+          <div className="preparation-queue-image" />
+          <div className="preparation-queue-body">
+            <span className="eyebrow">HAZIRLIK BEKLİYOR</span>
+            <h2>{pendingPreparation.title}</h2>
+            <p>
+              {pendingPreparation.zone} ·{" "}
+              {pendingPreparation.workerIds.length
+                ? `${pendingPreparation.workerIds.length} çalışan seçildi`
+                : "Çalışan seçimi yapılmadı"}
+            </p>
+            <button className="btn btn-primary" onClick={() => onSelect(pendingPreparation)}>
+              <Icon name="shield" size={17} />
+              Hazırlığı kontrol et
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="panel foreman-crew">
+          <PanelHeading
+            title="Atanan ekip"
+            action={<span className="count-chip">{task.workerIds.length} çalışan</span>}
+          />
+          <div className="crew-inline">
+            {task.workerIds.slice(0, 4).map((id) => (
+              <div key={id}>
+                <Avatar user={person(id)} />
+                <strong>{person(id).name.split(" ")[0]}</strong>
+                <small>{person(id).trade}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="panel foreman-map">
-        <PanelHeading title="Çalışma bölgesi" caption={task.zone} />
+        <PanelHeading title="Şantiye haritası" />
         <SiteMap tasks={tasks} onSelect={onSelect} focusTask={task} />
       </section>
     </div>
@@ -334,12 +397,7 @@ function WorkerDashboard({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: 
     tasks.find((t) => t.status === "planned");
   return (
     <>
-      <PageHeading title="İşçi" description="Emre Aydın · Merkez Şantiye" />
-      <div className="worker-date">
-        <Icon name="calendar" size={18} />
-        <strong>Bugün</strong>
-        <span>30 Eylül 2026</span>
-      </div>
+      <PageHeading title="Bugünkü görevim" />
       <Tabs
         value={tab}
         onChange={setTab}
@@ -367,11 +425,14 @@ function WorkerDashboard({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: 
           <section className="panel fill-panel map-full">
             <PanelHeading title="Çalışma alanı" caption={current.zone} />
             <SiteMap tasks={tasks} onSelect={onSelect} focusTask={current} />
-            <div className="panel-note">Merkez Şantiye · Şematik saha planı</div>
+            <div className="panel-note">Şantiye konumu · Google Maps</div>
           </section>
         ) : current ? (
           <div className="worker-overview">
             <section className="panel worker-assignment">
+              <div className="assignment-kicker">
+                <span className="live-dot" /> BUGÜNKÜ ATAMA
+              </div>
               <TaskSummary task={current} />
               <button className="location-link" onClick={() => setTab("site")}>
                 <Icon name="pin" size={18} />
@@ -381,9 +442,6 @@ function WorkerDashboard({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: 
                 </span>
                 <Icon name="right" size={17} />
               </button>
-              <div className="worker-map">
-                <SiteMap tasks={tasks} onSelect={onSelect} focusTask={current} />
-              </div>
               <div className="worker-time">
                 <span>
                   <Icon name="clock" size={18} />
@@ -435,7 +493,7 @@ function WorkerDashboard({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: 
           </div>
         ) : (
           <section className="panel fill-panel">
-            <Empty title="Atanan görev yok" text="Görev atandığında burada görünecek." />
+            <Empty title="Atanan görev yok" />
           </section>
         )}
       </div>

@@ -5,6 +5,11 @@ import { useDemo } from "@/lib/demo-store";
 import type { Role, Task } from "@/lib/types";
 import { Avatar, Badge, Icon, Modal, Progress } from "./ui";
 import { PagedList, Tabs } from "./pagination";
+import { TaskWorkflow } from "./workflow";
+import { useSession } from "@/lib/session";
+import { canStartTask, conflictingWorkers } from "@/lib/task-rules";
+import { taskTeam } from "@/lib/teams";
+import { ReadinessChecks } from "./preparation";
 
 export function TaskDetail({
   task,
@@ -13,6 +18,8 @@ export function TaskDetail({
   onIssue,
   onProduction,
   onToast,
+  onRedirect,
+  onCrew,
 }: {
   task: Task;
   role: Role;
@@ -20,22 +27,26 @@ export function TaskDetail({
   onIssue: () => void;
   onProduction: () => void;
   onToast: (message: string) => void;
+  onRedirect: (issueId: string) => void;
+  onCrew: () => void;
 }) {
-  const { state, updateTask, resolveIssue, acknowledge } = useDemo();
-  const isOwnForeman = role === "formen" && task.foremanId === "f1";
+  const { state, updateTask, resolveIssue, acknowledge, startTask } = useDemo();
+  const { user } = useSession();
+  const isOwnForeman = role === "formen" && task.foremanId === user?.id;
   const canStart = task.status === "planned" && isOwnForeman;
-  const [tab, setTab] = useState<"task" | "crew" | "issues" | "review" | "ready">(
-    role === "yonetici" && task.status === "review" ? "review" : canStart ? "ready" : "task",
+  const [tab, setTab] = useState<"task" | "crew" | "issues" | "review" | "ready" | "history">(
+    role === "yonetici" && task.status === "review"
+      ? "review"
+      : role === "yonetici" && task.status === "blocked"
+        ? "issues"
+        : canStart
+          ? "ready"
+          : "task",
   );
   const [checks, setChecks] = useState([task.ready, task.ready, task.ready]);
   const [reviewNote, setReviewNote] = useState("");
   const issues = state.issues.filter((i) => i.taskId === task.id && !i.resolved);
-  const overlapping = state.tasks.some(
-    (t) =>
-      t.id !== task.id &&
-      (t.status === "active" || t.status === "blocked") &&
-      t.workerIds.some((id) => task.workerIds.includes(id)),
-  );
+  const overlapping = conflictingWorkers(state.tasks, task.id, task.workerIds).length > 0;
   function change(patch: Partial<Task>, title: string) {
     updateTask(task.id, patch, { title, description: task.title, kind: "success" });
     onToast(title);
@@ -48,6 +59,7 @@ export function TaskDetail({
   if (canStart) tabs.push({ value: "ready", label: "Hazırlık" });
   if (role === "yonetici" && task.status === "review")
     tabs.push({ value: "review", label: "Onay" });
+  tabs.push({ value: "history", label: "Geçmiş" });
   return (
     <Modal title={task.title} subtitle={`${task.id} · ${task.zone}`} onClose={onClose} wide>
       <div className="detail-body">
@@ -56,9 +68,10 @@ export function TaskDetail({
           <span className="outline-chip">{task.trade}</span>
         </div>
         <Tabs value={tab} onChange={setTab} items={tabs} label="Görev detayı bölümü" />
-        <div className="detail-tab-content">
+        <div className={`detail-tab-content ${tab === "ready" ? "preparation-content" : ""}`}>
           {tab === "task" && (
             <div className="task-detail-summary">
+              <TaskWorkflow task={task} />
               <div className="detail-metrics">
                 <div>
                   <small>Çalışma</small>
@@ -81,6 +94,15 @@ export function TaskDetail({
               </div>
               <Progress value={(task.actual / task.target) * 100} />
               <p className="task-note">{task.note}</p>
+              {task.productionNote && (
+                <p className="form-hint">Üretim notu: {task.productionNote}</p>
+              )}
+              {task.status === "completed" && (
+                <p className="form-hint">
+                  Günlük kayıt onaylandı. İşin toplam tamamlanması, hedef ve gerçekleşen üretimle
+                  ayrıca değerlendirilir.
+                </p>
+              )}
               {task.reviewNote && (
                 <div className="review-note">
                   <strong>Düzeltme notu</strong>
@@ -94,20 +116,40 @@ export function TaskDetail({
           )}
           {tab === "ready" && canStart && (
             <div className="readiness-box">
-              <h3>Başlangıç kontrolü</h3>
-              {["Malzeme hazır", "Ekipman uygun", "Çalışma alanı güvenli ve hazır"].map(
-                (label, i) => (
-                  <label key={label} className="checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={checks[i]}
-                      onChange={(e) =>
-                        setChecks(checks.map((v, index) => (index === i ? e.target.checked : v)))
-                      }
-                    />
-                    {label}
-                  </label>
-                ),
+              <div className="preparation-heading">
+                <span className="stat-icon tone-teal">
+                  <Icon name="shield" size={23} />
+                </span>
+                <div>
+                  <h3>İşe başlamadan önce</h3>
+                  <p>{checks.filter(Boolean).length} / 3 kontrol tamamlandı</p>
+                </div>
+              </div>
+              <button
+                className="preparation-crew"
+                aria-label="Görev çalışanlarını belirle"
+                onClick={onCrew}
+                disabled={issues.length > 0}
+              >
+                <Icon name="team" size={20} />
+                <span>
+                  <strong>{taskTeam(task, state.teams)?.name || task.trade}</strong>
+                  <small>
+                    {task.workerIds.length
+                      ? `${task.workerIds.length} çalışan seçildi`
+                      : "Görevdeki çalışanları seçin"}
+                  </small>
+                </span>
+                <Icon name="right" size={17} />
+              </button>
+              <ReadinessChecks
+                checks={checks}
+                onChange={(index, checked) =>
+                  setChecks(checks.map((value, i) => (i === index ? checked : value)))
+                }
+              />
+              {issues.length > 0 && (
+                <p className="form-warning">Açık hazırlık eksiği var. Önce engeli kapatın.</p>
               )}
               {overlapping && (
                 <p className="form-warning">
@@ -115,10 +157,22 @@ export function TaskDetail({
                   başlatılamaz.
                 </p>
               )}
+              {task.workerIds.some(
+                (id) => !taskTeam(task, state.teams)?.workerIds.includes(id),
+              ) && (
+                <p className="form-warning">
+                  Görevde ekip dışındaki çalışanlar var. Çalışan seçimini güncelleyin.
+                </p>
+              )}
             </div>
           )}
           {tab === "crew" && (
             <>
+              {canStart && (
+                <button className="btn btn-primary" onClick={onCrew} disabled={issues.length > 0}>
+                  Çalışanları belirle
+                </button>
+              )}
               <div className="person-line detail-foreman">
                 <Avatar user={person(task.foremanId)} />
                 <span>
@@ -173,6 +227,32 @@ export function TaskDetail({
                       Kontrol ettim, giderildi
                     </button>
                   )}
+                  {role === "yonetici" && (
+                    <button className="btn btn-primary" onClick={() => onRedirect(issue.id)}>
+                      Hazır işe yönlendir
+                    </button>
+                  )}
+                </div>
+              )}
+            />
+          )}
+          {tab === "history" && (
+            <PagedList
+              items={task.history || []}
+              rowHeight={96}
+              label="Kayıt geçmişi"
+              empty={<div className="inline-success">Bu görevde henüz yeni işlem yok.</div>}
+              renderItem={(entry) => (
+                <div className="history-entry" key={entry.id}>
+                  <span>{entry.time}</span>
+                  <div>
+                    <strong>{entry.title}</strong>
+                    <small>
+                      {formatNumber(entry.actual)} {task.unit} · {formatNumber(entry.laborHours)}{" "}
+                      işçi-saat · {formatNumber(entry.waitingHours)} bekleme
+                      {entry.note ? ` · ${entry.note}` : ""}
+                    </small>
+                  </div>
                 </div>
               )}
             />
@@ -227,13 +307,20 @@ export function TaskDetail({
         {canStart && (
           <button
             className="btn btn-primary"
-            disabled={!checks.every(Boolean) || overlapping}
+            disabled={!checks.every(Boolean) || !canStartTask(state, task)}
             onClick={() => {
-              change({ status: "active", ready: true }, "İş başlangıcı kaydedildi");
-              setTab("task");
+              if (user && startTask(task.id, checks, user.id)) {
+                onToast("İş başlangıcı kaydedildi.");
+                setTab("task");
+              } else onToast("Çalışan ve hazırlık bilgilerini kontrol edin.");
             }}
           >
             İşe başla
+          </button>
+        )}
+        {canStart && (
+          <button className="btn btn-secondary" onClick={onIssue}>
+            Eksik bildir
           </button>
         )}
         {isOwnForeman && (task.status === "active" || task.status === "blocked") && (

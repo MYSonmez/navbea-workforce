@@ -9,35 +9,42 @@
   --font-sans: "Segoe UI", Arial, sans-serif;
 }
 :root {
-  --bg: #f3f7fd;
+  --bg: #f4f6fa;
   --surface: #fff;
-  --soft: #f6f9ff;
+  --soft: #f7f9fc;
   --hover: #edf4ff;
-  --text: #11213c;
-  --muted: #667b9d;
-  --subtle: #8d9db5;
-  --line: #e6edf7;
-  --blue: #1468ff;
-  --blue-soft: #eaf2ff;
-  --teal: #16886e;
+  --text: #17263e;
+  --muted: #586b85;
+  --subtle: #71839c;
+  --line: #e3e9f2;
+  --blue: #195de2;
+  --blue-soft: #edf3ff;
+  --teal: #087a63;
   --teal-soft: #e8f6ee;
-  --orange: #dc7b16;
+  --orange: #aa560b;
   --orange-soft: #fff0df;
   --purple: #815fbe;
   --purple-soft: #f0ebfc;
-  --shadow: 0 3px 16px #183b6810;
+  --shadow: 0 2px 3px #183b6803, 0 8px 24px #183b6805;
   --navy: #10213e;
+  --action: #195de2;
+  --action-hover: #124ec4;
+  --sidebar-bg: #12233f;
+  --sidebar-text: #c6d3e8;
+  --sidebar-muted: #a3b5d0;
+  --hero-bg: #173b79;
+  --hero-muted: #c5d8f5;
   color-scheme: light;
 }
 [data-theme="dark"] {
-  --bg: #0c1628;
-  --surface: #152238;
-  --soft: #192940;
+  --bg: #0c1422;
+  --surface: #151f30;
+  --soft: #1a273c;
   --hover: #21334c;
   --text: #edf3ff;
   --muted: #a0b3cd;
   --subtle: #7e94b3;
-  --line: #263951;
+  --line: #2a384e;
   --blue: #71a5ff;
   --blue-soft: #203a60;
   --teal: #64d4ad;
@@ -47,6 +54,8 @@
   --purple: #bb9aec;
   --purple-soft: #342a4d;
   --shadow: 0 3px 16px #00000012;
+  --sidebar-bg: #101b2d;
+  --hero-bg: #193962;
   color-scheme: dark;
 }
 * {
@@ -476,11 +485,11 @@ textarea:focus-visible {
 }
 .btn-primary {
   color: white;
-  background: #1468ff;
+  background: var(--action);
   box-shadow: 0 3px 7px #1468ff18;
 }
 .btn-primary:hover {
-  background: #0659e7;
+  background: var(--action-hover);
 }
 .btn-secondary {
   background: var(--surface);
@@ -610,7 +619,7 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 .segment-tabs button.is-active {
-  background: #1468ff;
+  background: var(--action);
   color: white;
   box-shadow: 0 2px 6px #1468ff15;
 }
@@ -728,7 +737,7 @@ textarea:focus-visible {
 .progress-track > span {
   display: block;
   height: 100%;
-  background: #1468ff;
+  background: var(--action);
   border-radius: 10px;
 }
 .dashboard-body,
@@ -2121,7 +2130,7 @@ html:not([data-theme="dark"]) .theme-choice-light,
     font-size: 11px;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 1023px) {
   .app-shell {
     display: grid;
     grid-template-rows: 60px minmax(0, 1fr) calc(62px + env(safe-area-inset-bottom));
@@ -2693,7 +2702,7 @@ html:not([data-theme="dark"]) .theme-choice-light,
     font-size: 10px;
   }
 }
-@media (min-width: 761px) and (max-height: 850px) {
+@media (min-width: 1024px) and (max-height: 850px) {
   .current-task-panel {
     padding: 14px;
   }
@@ -2767,7 +2776,7 @@ html:not([data-theme="dark"]) .theme-choice-light,
     margin: 9px 0;
   }
 }
-@media (max-width: 760px) and (max-height: 740px) {
+@media (max-width: 1023px) and (max-height: 740px) {
   .content-area:has(.foreman-overview) .project-strip {
     display: none;
   }

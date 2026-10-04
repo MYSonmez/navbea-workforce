@@ -61,8 +61,19 @@ export function TaskList({
             onClick={() => onSelect(task)}
             aria-label={`${task.title}, detayları aç`}
           >
-            <span className="trade-icon trade-blue">
-              <Icon name="tasks" size={19} />
+            <span
+              className={`trade-icon ${task.status === "blocked" ? "tone-orange" : task.status === "review" ? "tone-purple" : "trade-blue"}`}
+            >
+              <Icon
+                name={
+                  task.status === "blocked"
+                    ? "warning"
+                    : task.title.toLocaleLowerCase("tr-TR").includes("duvar")
+                      ? "brick"
+                      : "tasks"
+                }
+                size={19}
+              />
             </span>
             <span className="task-title-cell">
               <strong>{task.title}</strong>

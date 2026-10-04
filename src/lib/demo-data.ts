@@ -1,4 +1,5 @@
 import type { DemoState, Person, Role, Section } from "./types";
+import { teams } from "./teams";
 
 export const DEMO_DATE = "30 Eylül 2026, Çarşamba";
 export const people: Person[] = [
@@ -152,6 +153,7 @@ export const navigation: Record<Role, { section: Section; label: string; icon: s
 };
 
 export const initialState: DemoState = {
+  teams,
   tasks: [
     {
       id: "NV-1042",
@@ -316,9 +318,9 @@ export const initialState: DemoState = {
 export const statusInfo = {
   planned: { label: "Planlandı", className: "badge-neutral" },
   active: { label: "Devam ediyor", className: "badge-blue" },
-  blocked: { label: "Beklemede", className: "badge-orange" },
+  blocked: { label: "Engel var", className: "badge-orange" },
   review: { label: "Onay bekliyor", className: "badge-purple" },
-  completed: { label: "Tamamlandı", className: "badge-teal" },
+  completed: { label: "Gün onaylandı", className: "badge-teal" },
 };
 
 export function person(id: string) {

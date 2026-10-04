@@ -1,6 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { DemoProvider } from "@/lib/demo-store";
+import { SessionProvider } from "@/lib/session";
+import { SiteProvider } from "@/lib/sites";
 import "./globals.css";
+import "./workforce.css";
+import "./operations.css";
+import "./refinements.css";
 
 export const metadata: Metadata = {
   title: "Navbea Workforce | Saha Yönetimi",
@@ -18,7 +23,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <DemoProvider>{children}</DemoProvider>
+        <SessionProvider>
+          <SiteProvider>
+            <DemoProvider>{children}</DemoProvider>
+          </SiteProvider>
+        </SessionProvider>
       </body>
     </html>
   );

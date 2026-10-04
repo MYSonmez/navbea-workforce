@@ -1,140 +1,145 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import type { Task } from "@/lib/types";
+import { useSite } from "@/lib/sites";
+import { demoBlocks } from "@/lib/site-blocks";
+import { Icon } from "./ui";
 
-const blocks = [
-  { name: "A Blok", x: 70, y: 85, w: 140, h: 100, lift: 42, left: "26%", top: "34%" },
-  { name: "B Blok", x: 330, y: 80, w: 160, h: 105, lift: 52, left: "72%", top: "35%" },
-  { name: "C Blok", x: 205, y: 225, w: 150, h: 82, lift: 32, left: "46%", top: "75%" },
-];
-
-export function SiteMap({
-  tasks,
-  onSelect,
-  focusTask,
-}: {
+function project(lat: number, lng: number, zoom: number) {
+  const scale = 256 * 2 ** zoom;
+  const sin = Math.sin((lat * Math.PI) / 180);
+  return {
+    x: ((lng + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+  };
+}
+export function SiteMap(props: {
   tasks: Task[];
   onSelect: (task: Task) => void;
   focusTask?: Task;
 }) {
+  const { site } = useSite();
+  return <SatelliteMap key={`${site.id}-${props.focusTask?.id || "all"}`} site={site} {...props} />;
+}
+function SatelliteMap({
+  site,
+  tasks,
+  onSelect,
+  focusTask,
+}: {
+  site: ReturnType<typeof useSite>["site"];
+  tasks: Task[];
+  onSelect: (task: Task) => void;
+  focusTask?: Task;
+}) {
+  const { center, blocks } = demoBlocks(site.id);
+  const [selected, setSelected] = useState(
+    blocks.find((block) => focusTask?.zone.startsWith(block.name))?.id || "",
+  );
+  const [camera, setCamera] = useState({ ...center, zoom: 16 });
+  const frame = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 480, height: 320 });
+  useEffect(() => {
+    const node = frame.current;
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) =>
+      setSize({ width: entry.contentRect.width, height: entry.contentRect.height }),
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const query = encodeURIComponent(`${camera.lat},${camera.lng}`);
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY;
+  const src = key
+    ? `https://www.google.com/maps/embed/v1/view?key=${encodeURIComponent(key)}&center=${query}&language=tr&zoom=${camera.zoom}&maptype=satellite`
+    : `https://maps.google.com/maps?q=${query}&ll=${query}&z=${camera.zoom}&t=k&hl=tr&output=embed`;
+  const current = blocks.find((block) => block.id === selected);
+  const blockTasks = current ? tasks.filter((task) => task.zone.startsWith(current.name)) : [];
+  const origin = project(camera.lat, camera.lng, camera.zoom);
+  function focus(block: (typeof blocks)[number]) {
+    setSelected(block.id);
+    setCamera({ lat: block.lat, lng: block.lng, zoom: 18 });
+  }
+  function reset() {
+    setSelected("");
+    setCamera({ ...center, zoom: 16 });
+  }
   return (
-    <div className={`site-map ${focusTask ? "site-map-focused" : ""}`}>
-      <div className="map-canvas">
-        <svg viewBox="0 0 600 370" role="img" aria-label="Merkez Şantiye şematik bölge planı">
-          <defs>
-            <pattern id="paving" width="28" height="28" patternUnits="userSpaceOnUse">
-              <path d="M28 0H0V28" fill="none" stroke="#cdd5df" strokeWidth=".5" />
-            </pattern>
-            <linearGradient id="roof" x2="1" y2="1">
-              <stop stopColor="#fafcff" />
-              <stop offset="1" stopColor="#d7e1ed" />
-            </linearGradient>
-            <linearGradient id="wall" x2="0" y2="1">
-              <stop stopColor="#d6e0eb" />
-              <stop offset="1" stopColor="#aebdd1" />
-            </linearGradient>
-          </defs>
-          <rect width="600" height="370" fill="#eef2f6" />
-          <rect width="600" height="370" fill="url(#paving)" />
-          <path d="M-20 160L620 255M260-30L145 400" stroke="#d1d9e3" strokeWidth="43" />
-          <path
-            d="M-20 160L620 255M260-30L145 400"
-            stroke="#f8fafc"
-            strokeWidth="2"
-            strokeDasharray="13 9"
-          />
-          <path d="M10 8L167 8L147 42L5 22M443 290L588 300L595 366L426 349" fill="#d8e5dc" />
-          <path d="M30 260L70 270L45 350L9 339" fill="#d8e5dc" />
-          {[25, 55, 85, 500, 535, 570].map((x, i) => (
-            <g key={x}>
-              <circle cx={x} cy={i < 3 ? 24 : 332} r="10" fill="#bed3c5" />
-              <circle cx={x - 2} cy={i < 3 ? 21 : 328} r="7" fill="#cadcd0" />
-            </g>
-          ))}
-          {blocks.map((b) => {
-            const highlighted = focusTask?.zone.startsWith(b.name);
-            return (
-              <g key={b.name}>
-                <polygon
-                  points={`${b.x + 15},${b.y + b.h + 14} ${b.x + b.w + 50},${b.y + b.h + 30} ${b.x + b.w + 70},${b.y + 30} ${b.x + 42},${b.y + 3}`}
-                  fill="#a6b4c5"
-                  opacity=".2"
-                />
-                <polygon
-                  points={`${b.x},${b.y} ${b.x + b.w},${b.y + 22} ${b.x + b.w},${b.y + b.h + 22} ${b.x},${b.y + b.h}`}
-                  fill="url(#wall)"
-                  stroke="#a7b6c9"
-                />
-                <polygon
-                  points={`${b.x + b.w},${b.y + 22} ${b.x + b.w + 34},${b.y + 5} ${b.x + b.w + 34},${b.y + b.h + 5} ${b.x + b.w},${b.y + b.h + 22}`}
-                  fill="#b3c0d0"
-                  stroke="#a7b6c9"
-                />
-                <polygon
-                  points={`${b.x},${b.y - b.lift} ${b.x + b.w},${b.y + 22 - b.lift} ${b.x + b.w + 34},${b.y + 5 - b.lift} ${b.x + 34},${b.y - 17 - b.lift}`}
-                  fill={highlighted ? "#ffd59c" : "url(#roof)"}
-                  stroke={highlighted ? "#e4a250" : "#b7c4d4"}
-                />
-                <polygon
-                  points={`${b.x},${b.y - b.lift} ${b.x + b.w},${b.y + 22 - b.lift} ${b.x + b.w},${b.y + b.h + 22} ${b.x},${b.y + b.h}`}
-                  fill={highlighted ? "#edc99c" : "url(#wall)"}
-                  stroke="#afbdd0"
-                />
-                {[0, 1, 2, 3].map((floor) => (
-                  <g key={floor}>
-                    {[0, 1, 2, 3, 4].map((win) => (
-                      <polygon
-                        key={win}
-                        points={`${b.x + 12 + win * 25},${b.y - b.lift + 16 + floor * 23 + win * 3.8} ${b.x + 25 + win * 25},${b.y - b.lift + 18 + floor * 23 + win * 3.8} ${b.x + 25 + win * 25},${b.y - b.lift + 30 + floor * 23 + win * 3.8} ${b.x + 12 + win * 25},${b.y - b.lift + 28 + floor * 23 + win * 3.8}`}
-                        fill="#91a4bb"
-                        opacity=".6"
-                      />
-                    ))}
-                  </g>
-                ))}
-                <path
-                  d={`M${b.x + 42} ${b.y - b.lift - 6}l${b.w - 34} 14m-${b.w - 45} -1l${b.w - 34} 14`}
-                  stroke="#b4c1d0"
-                  strokeWidth="2"
-                />
-              </g>
-            );
-          })}
-          <g stroke="#e4b35a" strokeWidth="4" fill="none">
-            <path d="M540 135V48m-60 15h96M540 48l36 15M500 63l40-15M525 135h30" />
-            <path d="M486 64v40" strokeWidth="1.5" />
-          </g>
-          <text x="554" y="29" fontSize="10" fill="#7b8ba1">
-            K ↑
-          </text>
-          <text x="32" y="215" fontSize="9" fill="#8a9bb0" transform="rotate(9 32 215)">
-            SAHA YOLU
-          </text>
-        </svg>
-        <div className="map-markers">
-          {blocks
-            .filter((b) => !focusTask || focusTask.zone.startsWith(b.name))
-            .map((block) => {
-              const related = tasks.filter((t) => t.zone.startsWith(block.name));
-              const task = focusTask || related.find((t) => t.status === "blocked") || related[0];
-              const count = new Set(related.flatMap((t) => t.workerIds)).size;
-              return (
-                <button
-                  key={block.name}
-                  style={{ left: block.left, top: block.top }}
-                  className={`map-marker ${task?.status === "blocked" ? "marker-warning" : ""}`}
-                  disabled={!task}
-                  onClick={() => task && onSelect(task)}
-                  aria-label={`${block.name}, görev detaylarını aç`}
-                >
-                  <span />
-                  <strong>{block.name}</strong>
-                  <small>{focusTask ? "Çalışma alanı" : `${count} çalışan`}</small>
-                </button>
-              );
-            })}
+    <div className="site-map google-site-map satellite-map">
+      <div className="satellite-viewport" ref={frame}>
+        <iframe
+          title={`${site.name} Google Maps`}
+          src={src}
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          tabIndex={-1}
+        />
+        <div className="map-tools">
+          <button onClick={reset} aria-label="Tüm blokları göster">
+            <Icon name="pin" size={14} />
+            Tümü
+          </button>
+          <span>Örnek bloklar</span>
         </div>
+        <div className="map-zoom">
+          <button
+            aria-label="Haritayı yakınlaştır"
+            disabled={camera.zoom >= 20}
+            onClick={() => setCamera({ ...camera, zoom: camera.zoom + 1 })}
+          >
+            +
+          </button>
+          <button
+            aria-label="Haritayı uzaklaştır"
+            disabled={camera.zoom <= 15}
+            onClick={() => setCamera({ ...camera, zoom: camera.zoom - 1 })}
+          >
+            −
+          </button>
+        </div>
+        {blocks.map((block) => {
+          const point = project(block.lat, block.lng, camera.zoom);
+          const x = size.width / 2 + point.x - origin.x;
+          const y = size.height / 2 + point.y - origin.y;
+          if (x < 25 || x > size.width - 25 || y < 38 || y > size.height - 25) return null;
+          return (
+            <button
+              key={block.id}
+              className={`block-pin ${selected === block.id ? "is-selected" : ""}`}
+              style={{ left: x, top: y }}
+              aria-label={`${block.name} konumuna git`}
+              aria-pressed={selected === block.id}
+              onClick={() => focus(block)}
+            >
+              <Icon name="building" size={16} />
+              <strong>{block.name}</strong>
+            </button>
+          );
+        })}
       </div>
-      <span className="map-watermark">Şematik plan</span>
+      <div className="block-switches" aria-label="Harita blokları">
+        {blocks.map((block) => (
+          <button key={block.id} aria-pressed={selected === block.id} onClick={() => focus(block)}>
+            {block.name}
+          </button>
+        ))}
+      </div>
+      <div className="google-map-caption">
+        <span>{current ? `${current.name} · ${blockTasks.length} görev` : "Uydu görünümü"}</span>
+        <a
+          href={`https://www.google.com/maps/@${camera.lat},${camera.lng},${camera.zoom}z/data=!3m1!1e3`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google Maps’te aç <Icon name="right" size={13} />
+        </a>
+      </div>
+      {current && blockTasks.length > 0 && (
+        <button className="map-task-link" onClick={() => onSelect(blockTasks[0])}>
+          {blockTasks[0].title}
+          <Icon name="right" size={14} />
+        </button>
+      )}
     </div>
   );
 }

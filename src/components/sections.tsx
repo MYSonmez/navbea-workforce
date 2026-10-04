@@ -2,26 +2,48 @@
 import { useState } from "react";
 import { formatNumber, people, person, roleInfo, statusInfo } from "@/lib/demo-data";
 import { useDemo } from "@/lib/demo-store";
+import { useSession } from "@/lib/session";
+import { useSite } from "@/lib/sites";
+import { TeamEditor } from "./team-editor";
 import type { Role, Task } from "@/lib/types";
 import { PageHeading } from "./dashboard";
 import { Avatar, Badge, Empty, Icon, PanelHeading, Progress } from "./ui";
 import { PagedList, Tabs } from "./pagination";
 
 export function TeamSection({ role, tasks }: { role: Role; tasks: Task[] }) {
+  const { site } = useSite();
   const { state } = useDemo();
+  const { user } = useSession();
+  const [editingTeams, setEditingTeams] = useState(false);
   const [query, setQuery] = useState("");
-  const ids = new Set(tasks.flatMap((t) => t.workerIds));
+  const ids = new Set(
+    state.teams.filter((t) => t.foremanId === user?.id).flatMap((t) => t.workerIds),
+  );
+  const siteWorkers = new Set(
+    state.teams.filter((t) => site.teamIds.includes(t.id)).flatMap((t) => t.workerIds),
+  );
   const team = people.filter(
     (p) =>
       p.role === "isci" &&
-      (role === "yonetici" || ids.has(p.id)) &&
+      (role === "yonetici" ? siteWorkers.has(p.id) : ids.has(p.id)) &&
       `${p.name} ${p.trade}`.toLocaleLowerCase("tr-TR").includes(query.toLocaleLowerCase("tr-TR")),
   );
   return (
     <>
       <PageHeading
         title={role === "yonetici" ? "Ekip & çalışanlar" : "Ekibim"}
-        description={`${team.length} çalışan · Merkez Şantiye`}
+        description={`${team.length} çalışan`}
+        action={
+          <div className="heading-actions">
+            {role === "formen" && (
+              <button className="btn btn-secondary" onClick={() => setEditingTeams(true)}>
+                <Icon name="users" size={17} />
+                Ekipleri düzenle
+              </button>
+            )}
+            <div className="team-heading-photo" aria-hidden="true" />
+          </div>
+        }
       />
       <label className="search-box section-search">
         <Icon name="search" size={17} />
@@ -73,6 +95,7 @@ export function TeamSection({ role, tasks }: { role: Role; tasks: Task[] }) {
           }}
         />
       </section>
+      {editingTeams && <TeamEditor onClose={() => setEditingTeams(false)} />}
     </>
   );
 }
@@ -133,7 +156,6 @@ export function ReportsSection({
     <>
       <PageHeading
         title={role === "formen" ? "Gün sonu" : "Raporlar"}
-        description="30 Eylül 2026 · Günlük kayıtlar"
         action={
           <button className="btn btn-secondary" onClick={() => downloadCsv(records)}>
             <Icon name="download" size={17} />
@@ -310,7 +332,6 @@ export function NotificationsSection() {
     <>
       <PageHeading
         title="Bildirimler"
-        description="Şantiye kayıt hareketleri"
         action={
           <button className="btn btn-secondary" onClick={markRead}>
             <Icon name="checks" size={17} />
@@ -358,7 +379,9 @@ export function ProfileSection({
   onToast: (message: string) => void;
 }) {
   const { reset } = useDemo();
-  const user = person(roleInfo[role].userId);
+  const { site } = useSite();
+  const { user: signedInUser } = useSession();
+  const user = signedInUser || person(roleInfo[role].userId);
   const [tab, setTab] = useState<"profile" | "preferences">("profile");
   const [confirmReset, setConfirmReset] = useState(false);
   return (
@@ -391,7 +414,7 @@ export function ProfileSection({
               </div>
               <div>
                 <dt>Proje</dt>
-                <dd>Merkez Şantiye</dd>
+                <dd>{site.name}</dd>
               </div>
               <div>
                 <dt>Firma</dt>

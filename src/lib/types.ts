@@ -8,6 +8,8 @@ export interface Task {
   zone: string;
   trade: string;
   foremanId: string;
+  teamId?: string;
+  siteId?: string;
   workerIds: string[];
   target: number;
   actual: number;
@@ -21,6 +23,17 @@ export interface Task {
   laborHours: number;
   waitingHours: number;
   reviewNote?: string;
+  startedAt?: string;
+  productionNote?: string;
+  history?: {
+    id: string;
+    title: string;
+    time: string;
+    actual: number;
+    laborHours: number;
+    waitingHours: number;
+    note?: string;
+  }[];
 }
 
 export interface Person {
@@ -40,6 +53,8 @@ export interface Issue {
   workerIds: string[];
   resolved: boolean;
   time: string;
+  closedAt?: string;
+  redirectedTo?: string;
 }
 
 export interface Activity {
@@ -51,9 +66,18 @@ export interface Activity {
 }
 
 export interface DemoState {
+  teams: Team[];
   tasks: Task[];
   issues: Issue[];
   activities: Activity[];
   acknowledged: string[];
   readNotifications: string[];
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  trade: string;
+  foremanId: string;
+  workerIds: string[];
 }
